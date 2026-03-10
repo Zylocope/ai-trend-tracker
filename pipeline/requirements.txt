@@ -1,10 +1,10 @@
 pytrends==4.9.2
-praw==7.7.1
 newsapi-python==0.2.7
 psycopg2-binary==2.9.9
 pandas==2.2.2
 python-dotenv==1.0.1
 tenacity==8.3.0
 loguru==0.7.2
+requests==2.32.3
 transformers==4.42.4
 torch==2.3.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
