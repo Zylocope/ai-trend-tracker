@@ -8,16 +8,28 @@ export const supabase = createClient(
   supabaseAnon || 'placeholder-key'
 )
 
-// ──────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
 // Types
-// ──────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+
+export interface CategoryRow {
+  category_id:  number
+  name:         string
+  slug:         string
+  description:  string
+  icon:         string
+}
 
 export interface LeaderboardRow {
   tool_id:                 number
   tool_name:               string
   slug:                    string
   company:                 string
-  date:                    string
+  category_id:             number
+  category_name:           string
+  category_slug:           string
+  category_icon:           string
+  date:                    string | null
   google_trend_score:      number | null
   reddit_mention_count:    number | null
   news_mention_count:      number | null
@@ -49,4 +61,5 @@ export interface ToolRow {
   slug:         string
   company:      string
   release_date: string
+  category_slug:string
 }

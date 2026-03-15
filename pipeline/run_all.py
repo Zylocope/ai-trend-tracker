@@ -1,5 +1,6 @@
 """
-Main ingestion entry point.
+Main ingestion entry point — fetches all tools stored in dim_tool.
+Sources: Google Trends + HackerNews + NewsAPI
 Run: python -m pipeline.run_all
 """
 import sys
@@ -46,7 +47,7 @@ def run():
     all_raw = pd.concat([hn_raw, news_raw], ignore_index=True)
     insert_raw_mentions(all_raw)
 
-    logger.info("═══ Ingestion pipeline complete ═══")
+    logger.info(f"═══ Done — processed {len(tools)} tools ═══")
 
 
 if __name__ == "__main__":
