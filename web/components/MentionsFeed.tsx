@@ -3,97 +3,226 @@
 import { MentionRow } from '@/lib/supabase'
 import { useState } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
-import clsx from 'clsx'
 
 interface Props { mentions: MentionRow[] }
 
-type Filter = 'all' | 'reddit' | 'news'
+type Filter = 'all' | 'hackernews' | 'news'
+
+// SVG icons
+function HNIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="0.5" y="0.5" width="12" height="12" rx="2" fill="#f97316" />
+      <text x="6.5" y="9.5" textAnchor="middle" fill="white"
+        style={{ fontSize: 9, fontFamily: 'monospace', fontWeight: 700 }}>
+        Y
+      </text>
+    </svg>
+  )
+}
+
+function NewsIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <rect x="0.5" y="0.5" width="12" height="12" rx="2" stroke="var(--border-medium)" fill="var(--bg-elevated)"/>
+      <path d="M2.5 4h8M2.5 6.5h5M2.5 9h6.5" stroke="var(--text-secondary)" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+      <path d="M4.5 2H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V6.5"
+        stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M6.5 1H10v3.5M10 1L5.5 5.5"
+        stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
 
 function sentimentColor(s: number | null): string {
-  if (s === null) return 'text-muted'
-  if (s > 0.1)   return 'text-lime'
-  if (s < -0.1)  return 'text-rose'
-  return 'text-soft'
+  if (s === null) return 'var(--text-muted)'
+  if (s > 0.1)   return 'var(--accent-teal)'
+  if (s < -0.1)  return 'var(--accent-red)'
+  return 'var(--text-secondary)'
 }
+
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: 'all',        label: 'All' },
+  { key: 'hackernews', label: 'HackerNews' },
+  { key: 'news',       label: 'News' },
+]
 
 export default function MentionsFeed({ mentions }: Props) {
   const [filter, setFilter] = useState<Filter>('all')
 
-  const visible = filter === 'all' ? mentions : mentions.filter(m => m.source === filter)
+  const visible = filter === 'all'
+    ? mentions
+    : mentions.filter(m => m.source === filter || (filter === 'hackernews' && m.source === 'hackernews'))
 
   return (
     <div>
-      {/* Filter tabs */}
-      <div className="flex gap-1 mb-5">
-        {(['all', 'reddit', 'news'] as Filter[]).map(f => (
+      {/* Filter row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
+        {FILTERS.map(f => (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={clsx(
-              'px-3.5 py-1.5 rounded-full text-xs font-mono transition-colors capitalize',
-              filter === f
-                ? 'bg-edge text-bright'
-                : 'text-muted hover:text-soft'
-            )}
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 999,
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.75rem',
+              border: '1px solid',
+              borderColor: filter === f.key ? 'var(--accent-gold)' : 'var(--border-subtle)',
+              background: filter === f.key ? 'rgba(255,183,3,0.1)' : 'transparent',
+              color: filter === f.key ? 'var(--accent-gold)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
           >
-            {f}
+            {f.label}
           </button>
         ))}
-        <span className="ml-auto font-mono text-xs text-muted self-center">
+        <span style={{
+          marginLeft: 'auto',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '0.7rem',
+          color: 'var(--text-muted)',
+        }}>
           {visible.length} results
         </span>
       </div>
 
       {/* Feed */}
-      <div className="flex flex-col gap-3">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {visible.length === 0 && (
-          <div className="border border-edge rounded-lg p-8 text-center text-muted text-sm font-mono">
+          <div style={{
+            padding: '3rem',
+            textAlign: 'center',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.8rem',
+            color: 'var(--text-muted)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 12,
+          }}>
             No mentions yet.
           </div>
         )}
 
-        {visible.map(m => (
-          <a
-            key={m.id}
-            href={m.url ?? '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block border border-edge rounded-lg p-4 hover:border-amber/40
-                       hover:bg-card/50 transition-all group no-underline"
-          >
-            <div className="flex items-start justify-between gap-3 mb-1">
-              <p className="text-bright text-sm leading-snug group-hover:text-amber transition-colors line-clamp-2">
-                {m.title || '(no title)'}
-              </p>
-              {m.sentiment !== null && (
-                <span className={clsx('font-mono text-xs shrink-0 mt-0.5', sentimentColor(m.sentiment))}>
-                  {m.sentiment >= 0 ? '+' : ''}{m.sentiment.toFixed(2)}
-                </span>
-              )}
-            </div>
+        {visible.map(m => {
+          const isHN  = m.source === 'hackernews'
+          const domain = m.url ? (() => { try { return new URL(m.url!).hostname } catch { return '' } })() : ''
 
-            {m.body && (
-              <p className="text-muted text-xs leading-relaxed mb-2 line-clamp-2">{m.body}</p>
-            )}
+          return (
+            <a
+              key={m.id}
+              href={m.url ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'block',
+                textDecoration: 'none',
+                padding: '14px 16px',
+                borderRadius: 10,
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-surface)',
+                transition: 'border-color 0.2s, background 0.2s',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,183,3,0.3)'
+                ;(e.currentTarget as HTMLElement).style.background  = 'var(--bg-elevated)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-subtle)'
+                ;(e.currentTarget as HTMLElement).style.background  = 'var(--bg-surface)'
+              }}
+            >
+              {/* Title row */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+                <p style={{
+                  color: 'var(--text-primary)',
+                  fontSize: '0.875rem',
+                  lineHeight: 1.4,
+                  fontWeight: 500,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}>
+                  {m.title || '(no title)'}
+                </p>
+                {m.sentiment !== null && (
+                  <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '0.75rem',
+                    color: sentimentColor(m.sentiment),
+                    whiteSpace: 'nowrap',
+                    marginTop: 2,
+                    flexShrink: 0,
+                  }}>
+                    {m.sentiment >= 0 ? '+' : ''}{m.sentiment.toFixed(2)}
+                  </span>
+                )}
+              </div>
 
-            <div className="flex items-center gap-3 text-muted text-xs font-mono">
-              <span className={clsx(
-                'px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider',
-                m.source === 'reddit' ? 'bg-ice/10 text-ice' : 'bg-soft/10 text-soft'
-              )}>
-                {m.source}
-              </span>
-              <span>
-                {formatDistanceToNow(parseISO(m.fetched_at), { addSuffix: true })}
-              </span>
-              {m.url && (
-                <span className="ml-auto truncate max-w-[180px] text-muted/60">
-                  {new URL(m.url).hostname}
-                </span>
+              {/* Body snippet */}
+              {m.body && (
+                <p style={{
+                  color: 'var(--text-muted)',
+                  fontSize: '0.775rem',
+                  lineHeight: 1.5,
+                  marginBottom: 8,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}>
+                  {m.body}
+                </p>
               )}
-            </div>
-          </a>
-        ))}
+
+              {/* Meta row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {/* Source badge */}
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  fontSize: '0.7rem',
+                  fontFamily: 'var(--font-mono)',
+                  background: isHN ? 'rgba(249,115,22,0.12)' : 'rgba(255,255,255,0.05)',
+                  color: isHN ? '#f97316' : 'var(--text-secondary)',
+                  border: `1px solid ${isHN ? 'rgba(249,115,22,0.25)' : 'var(--border-subtle)'}`,
+                }}>
+                  {isHN ? <HNIcon /> : <NewsIcon />}
+                  {isHN ? 'HackerNews' : 'News'}
+                </span>
+
+                {/* Time */}
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  {formatDistanceToNow(parseISO(m.fetched_at), { addSuffix: true })}
+                </span>
+
+                {/* Domain */}
+                {domain && (
+                  <span style={{
+                    marginLeft: 'auto',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    fontFamily: 'var(--font-mono)', fontSize: '0.7rem',
+                    color: 'var(--text-muted)',
+                    maxWidth: 160,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    <ExternalLinkIcon />
+                    {domain}
+                  </span>
+                )}
+              </div>
+            </a>
+          )
+        })}
       </div>
     </div>
   )
