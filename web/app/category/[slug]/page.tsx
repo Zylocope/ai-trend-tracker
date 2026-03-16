@@ -10,25 +10,15 @@ export async function generateStaticParams() {
   return (data ?? []).map((c) => ({ slug: c.slug }))
 }
 
-async function getCategoryData(slug: string): Promise<{
-  category: CategoryRow
-  rows: LeaderboardRow[]
-} | null> {
+async function getCategoryData(slug: string): Promise<{ category: CategoryRow; rows: LeaderboardRow[] } | null> {
   const { data: category } = await supabase
-    .from('dim_category')
-    .select('*')
-    .eq('slug', slug)
-    .single()
-
+    .from('dim_category').select('*').eq('slug', slug).single()
   if (!category) return null
-
   const { data: rows } = await supabase
-    .from('v_category_leaderboard')
-    .select('*')
+    .from('v_category_leaderboard').select('*')
     .eq('category_slug', slug)
     .order('composite_score', { ascending: false })
     .limit(20)
-
   return { category, rows: (rows ?? []) as LeaderboardRow[] }
 }
 
@@ -52,10 +42,32 @@ const WEIGHT_LABELS: Record<string, { label: string; pct: string; color: string 
   ],
 }
 
+function CategorySVGIcon({ slug }: { slug: string }) {
+  const s = 'var(--text-secondary)'
+  if (slug === 'general-chat') return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M1.5 2.5a1 1 0 011-1h9a1 1 0 011 1v6a1 1 0 01-1 1H8l-2.5 2V9.5H2.5a1 1 0 01-1-1v-6z"
+        stroke={s} strokeWidth="1.3" strokeLinejoin="round"/>
+      <path d="M4 5.5h6M4 7.5h4" stroke={s} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  )
+  if (slug === 'coding') return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M5 4L2 7l3 3M9 4l3 3-3 3" stroke={s} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M8 2.5l-2 9" stroke={s} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  )
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <circle cx="6" cy="6" r="4" stroke={s} strokeWidth="1.3"/>
+      <path d="M9 9.5l2.5 2.5" stroke={s} strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
 export default async function CategoryPage({ params }: { params: { slug: string } }) {
   const result = await getCategoryData(params.slug)
   if (!result) notFound()
-
   const { category, rows } = result
   const today = rows[0]?.date
     ? format(new Date(rows[0].date), 'MMMM d, yyyy')
@@ -69,14 +81,18 @@ export default async function CategoryPage({ params }: { params: { slug: string 
         fontFamily: 'var(--font-mono)', fontSize: '0.75rem',
         color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '2rem',
       }}>
-        ← All Categories
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M8 2L4 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        All Categories
       </a>
 
       <section className="text-center mb-14">
         <div className="badge-pulse inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 font-mono text-xs uppercase tracking-widest"
           style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
           <span className="live-pulse" />
-          <span>{category.icon} {category.name}</span>
+          <CategorySVGIcon slug={params.slug} />
+          <span>{category.name}</span>
           <span style={{ color: 'var(--text-muted)' }}>—</span>
           <span>{today}</span>
         </div>
@@ -93,8 +109,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
 
         <div className="fade-up flex flex-wrap justify-center gap-5" style={{ animationDelay: '0.4s' }}>
           {weights.map(w => (
-            <div key={w.label} className="flex items-center gap-2 text-sm"
-              style={{ color: 'var(--text-secondary)' }}>
+            <div key={w.label} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
               <span className="legend-dot shrink-0" style={{ background: w.color }} />
               <span>{w.label}</span>
               <span className="font-mono text-xs px-1.5 py-0.5 rounded"
@@ -107,8 +122,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
       </section>
 
       {rows.length === 0 ? (
-        <div className="table-wrap p-16 text-center font-mono text-sm"
-          style={{ color: 'var(--text-muted)' }}>
+        <div className="table-wrap p-16 text-center font-mono text-sm" style={{ color: 'var(--text-muted)' }}>
           No data yet — run the ingestion pipeline first.
         </div>
       ) : (
