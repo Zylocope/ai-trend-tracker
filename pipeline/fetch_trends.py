@@ -1,59 +1,80 @@
-"""Fetcher: Google Trends via pytrends."""
+"""
+Fetcher: Google Trends via direct HTTP request.
+Replaces pytrends which is broken with pandas >= 2.x on GitHub Actions.
+"""
 import time
+import json
+import requests
 import pandas as pd
-from pytrends.request import TrendReq
+from datetime import date, timedelta
 from tenacity import retry, stop_after_attempt, wait_exponential
 from loguru import logger
 
+SESSION = requests.Session()
+SESSION.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+})
 
-def _build_pytrends() -> TrendReq:
-    return TrendReq(hl="en-US", tz=0, timeout=(10, 25), retries=2, backoff_factor=0.5)
+WIDGET_URL  = "https://trends.google.com/trends/api/explore"
+MULTILINE_URL = "https://trends.google.com/trends/api/widgetdata/multiline"
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2, min=5, max=30))
+def _get_token(keyword: str) -> tuple[str, str]:
+    """Get the token and request object needed for the data query."""
+    params = {
+        "hl":  "en-US",
+        "tz":  "0",
+        "req": json.dumps({
+            "comparisonItem": [{"keyword": keyword, "geo": "", "time": "today 3-m"}],
+            "category":       0,
+            "property":       "",
+        }),
+    }
+    resp = SESSION.get(WIDGET_URL, params=params, timeout=15)
+    resp.raise_for_status()
+
+    # Strip Google's ")]}',\n" prefix
+    text   = resp.text[5:]
+    data   = json.loads(text)
+    widget = next(w for w in data["widgets"] if w["id"] == "TIMESERIES")
+    return widget["token"], json.dumps(widget["request"])
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=3, min=8, max=30))
 def _fetch_interest(keyword: str) -> pd.DataFrame:
-    pytrends = _build_pytrends()
-    pytrends.build_payload([keyword], timeframe="today 3-m", geo="", gprop="")
-    df = pytrends.interest_over_time()
+    token, req = _get_token(keyword)
 
-    if df is None or df.empty:
-        logger.warning(f"No Google Trends data for '{keyword}'")
+    params = {
+        "hl":    "en-US",
+        "tz":    "0",
+        "req":   req,
+        "token": token,
+        "tz":    "0",
+    }
+    resp = SESSION.get(MULTILINE_URL, params=params, timeout=15)
+    resp.raise_for_status()
+
+    text = resp.text[5:]
+    data = json.loads(text)
+
+    rows = []
+    for point in data["default"]["timelineData"]:
+        date_str = point["formattedTime"]           # e.g. "Mar 10, 2026"
+        value    = point["value"][0]
+        dt       = pd.to_datetime(date_str, format="%b %d, %Y").date()
+        rows.append({"date": dt, "score": value})
+
+    if not rows:
         return pd.DataFrame()
 
-    # Drop isPartial — handle both column and index cases
-    if "isPartial" in df.columns:
-        df = df.drop(columns=["isPartial"])
-
-    # Reset index safely
-    if not isinstance(df.index, pd.RangeIndex):
-        df = df.reset_index()
-
-    # Rename keyword column to score
-    if keyword in df.columns:
-        df = df.rename(columns={keyword: "score"})
-    elif "value" in df.columns:
-        df = df.rename(columns={"value": "score"})
-    else:
-        # Take first numeric column
-        num_cols = df.select_dtypes(include="number").columns.tolist()
-        if num_cols:
-            df = df.rename(columns={num_cols[0]: "score"})
-        else:
-            return pd.DataFrame()
-
-    # Ensure date column exists
-    if "date" not in df.columns:
-        date_cols = [c for c in df.columns if "date" in str(c).lower() or "time" in str(c).lower()]
-        if date_cols:
-            df = df.rename(columns={date_cols[0]: "date"})
-        else:
-            return pd.DataFrame()
-
-    return df[["date", "score"]]
+    logger.info(f"  Got {len(rows)} trend datapoints for '{keyword}'")
+    return pd.DataFrame(rows)
 
 
 def fetch_google_trends(tools: list[dict]) -> pd.DataFrame:
-    rows = []
+    result_rows = []
 
     for tool in tools:
         keyword = tool["keywords"][0]
@@ -61,18 +82,17 @@ def fetch_google_trends(tools: list[dict]) -> pd.DataFrame:
         try:
             df = _fetch_interest(keyword)
             if not df.empty:
-                df["tool_id"] = tool["tool_id"]
-                df = df.rename(columns={"score": "google_trend_score"})
-                rows.append(df[["date", "tool_id", "google_trend_score"]])
-                logger.info(f"  Got {len(df)} trend rows for {tool['tool_name']}")
+                df["tool_id"]            = tool["tool_id"]
+                df["google_trend_score"] = df["score"]
+                result_rows.append(df[["date", "tool_id", "google_trend_score"]])
         except Exception as e:
             logger.error(f"Google Trends failed for {tool['tool_name']}: {e}")
         time.sleep(2)
 
-    if not rows:
+    if not result_rows:
         logger.warning("Google Trends returned no data for any tool")
         return pd.DataFrame()
 
-    result = pd.concat(rows, ignore_index=True)
-    result["date"] = pd.to_datetime(result["date"]).dt.date
-    return result
+    combined = pd.concat(result_rows, ignore_index=True)
+    logger.info(f"Google Trends total rows: {len(combined)}")
+    return combined

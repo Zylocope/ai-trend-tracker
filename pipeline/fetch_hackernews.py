@@ -23,14 +23,20 @@ def _search(keyword: str) -> list[dict]:
     }
     resp = requests.get(BASE_URL, params=params, timeout=15)
     resp.raise_for_status()
-    data = resp.json()
-    hits = data.get("hits", [])
-    logger.debug(f"  Algolia '{keyword}': {data.get('nbHits', 0)} total hits, got {len(hits)}")
+    data    = resp.json()
+    nb_hits = data.get("nbHits", 0)
+    hits    = data.get("hits", [])
+    logger.info(f"  Algolia '{keyword}': {nb_hits} total hits, returning {len(hits)}")
 
     results = []
     for h in hits:
         created = datetime.fromtimestamp(h.get("created_at_i", 0), tz=timezone.utc)
-        title   = h.get("title") or h.get("story_title") or h.get("comment_text", "")[:120]
+        title   = (
+            h.get("title") or
+            h.get("story_title") or
+            h.get("comment_text", "")[:120] or
+            "(no title)"
+        )
         results.append({
             "date":   created.date(),
             "title":  title,
@@ -50,7 +56,6 @@ def fetch_hackernews_mentions(tools: list[dict]) -> tuple[pd.DataFrame, pd.DataF
         logger.info(f"HackerNews: {tool['tool_name']} → '{keyword}'")
         try:
             posts = _search(keyword)
-            logger.info(f"  Got {len(posts)} posts for {tool['tool_name']}")
             for p in posts:
                 raw_rows.append({**p, "tool_id": tool["tool_id"]})
             if posts:
@@ -58,6 +63,7 @@ def fetch_hackernews_mentions(tools: list[dict]) -> tuple[pd.DataFrame, pd.DataF
                 daily = df.groupby("date").size().reset_index(name="reddit_mention_count")
                 daily["tool_id"] = tool["tool_id"]
                 count_rows.append(daily)
+                logger.info(f"  Stored {len(posts)} posts across {len(daily)} days")
         except Exception as e:
             logger.error(f"HackerNews failed for {tool['tool_name']}: {e}")
         time.sleep(0.3)
