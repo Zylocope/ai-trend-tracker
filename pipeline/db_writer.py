@@ -1,17 +1,39 @@
 """Upserts ingested data into Supabase PostgreSQL."""
+import math
 import pandas as pd
 import psycopg2.extras
 from loguru import logger
 from pipeline.db_utils import get_conn
 
 
+def _clean(value, is_int: bool = False):
+    """Convert NaN/inf to None, cast ints properly."""
+    if value is None:
+        return None
+    try:
+        if math.isnan(float(value)) or math.isinf(float(value)):
+            return None
+    except (TypeError, ValueError):
+        return None
+    if is_int:
+        return int(value)
+    return float(value)
+
+
 def upsert_daily_metrics(df: pd.DataFrame) -> None:
     if df.empty:
         return
 
-    cols = [c for c in ["google_trend_score", "reddit_mention_count", "news_mention_count"] if c in df.columns]
+    cols = [c for c in [
+        "google_trend_score",
+        "reddit_mention_count",
+        "news_mention_count",
+    ] if c in df.columns]
+
     if not cols:
         return
+
+    int_cols = {"reddit_mention_count", "news_mention_count"}
 
     set_clause   = ", ".join(f"{c} = EXCLUDED.{c}" for c in cols)
     col_list     = ", ".join(["date", "tool_id"] + cols)
@@ -24,7 +46,12 @@ def upsert_daily_metrics(df: pd.DataFrame) -> None:
         DO UPDATE SET {set_clause}
     """
 
-    records = [tuple(row[c] for c in ["date", "tool_id"] + cols) for _, row in df.iterrows()]
+    records = []
+    for _, row in df.iterrows():
+        record = [row["date"], int(row["tool_id"])]
+        for c in cols:
+            record.append(_clean(row[c], is_int=(c in int_cols)))
+        records.append(tuple(record))
 
     with get_conn() as conn:
         with conn.cursor() as cur:
