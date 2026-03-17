@@ -20,6 +20,49 @@ export interface CategoryRow {
   icon:         string
 }
 
+export interface CompanyRow {
+  company_id:        number
+  name:              string
+  slug:              string
+  founded_year:      number | null
+  hq:                string | null
+  total_funding_usd: number | null
+  description:       string | null
+}
+
+export interface ModelRow {
+  model_id:         number
+  company_id:       number
+  name:             string
+  slug:             string
+  release_date:     string | null
+  context_window:   number | null
+  speed_tps:        number | null
+  latency_ms:       number | null
+  providers:        string[] | null
+  is_open_source:   boolean
+}
+
+export interface ModelLeaderboardRow {
+  model_id:                number
+  model_name:              string
+  model_slug:              string
+  context_window:          number | null
+  speed_tps:               number | null
+  latency_ms:              number | null
+  providers:               string[] | null
+  is_open_source:          boolean
+  company_id:              number
+  company_name:            string
+  company_slug:            string
+  total_funding_usd:       number | null
+  date:                    string | null
+  google_trend_score:      number | null
+  hn_mention_count:        number | null
+  news_mention_count:      number | null
+  average_sentiment_score: number | null
+}
+
 export interface LeaderboardRow {
   tool_id:                 number
   tool_name:               string
@@ -56,10 +99,10 @@ export interface MentionRow {
 }
 
 export interface ToolRow {
-  tool_id:      number
-  tool_name:    string
-  slug:         string
-  company:      string
-  release_date: string
-  category_slug:string
+  tool_id:       number
+  tool_name:     string
+  slug:          string
+  company:       string
+  release_date:  string
+  category_slug: string
 }
