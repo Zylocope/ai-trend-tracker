@@ -20,7 +20,6 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* ── Hero ─────────────────────────────────────── */}
       <section className="text-center mb-14">
         <div
           className="badge-pulse inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 font-mono text-xs uppercase tracking-widest"
@@ -45,29 +44,15 @@ export default async function HomePage() {
           combined with daily trend signals and HackerNews mentions.
         </p>
 
-        {/* Quick links to categories */}
         <div className="fade-up flex flex-wrap justify-center gap-3" style={{ animationDelay: '0.5s' }}>
-          <a
-            href="/categories"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '8px 18px', borderRadius: 999,
-              fontFamily: 'var(--font-mono)', fontSize: '0.75rem',
-              border: '1px solid var(--border-subtle)',
-              background: 'var(--bg-elevated)',
-              color: 'var(--text-secondary)',
-              textDecoration: 'none',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLElement).style.borderColor = 'var(--accent-gold)'
-              ;(e.currentTarget as HTMLElement).style.color = 'var(--accent-gold)'
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-subtle)'
-              ;(e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'
-            }}
-          >
+          <a href="/categories" className="nav-link" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 18px', borderRadius: 999,
+            fontFamily: 'var(--font-mono)', fontSize: '0.75rem',
+            border: '1px solid var(--border-subtle)',
+            background: 'var(--bg-elevated)',
+            textDecoration: 'none',
+          }}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <rect x="1" y="1" width="4" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/>
               <rect x="7" y="1" width="4" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/>
@@ -82,7 +67,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Model table ──────────────────────────────── */}
       <div className="fade-up" style={{ animationDelay: '0.6s' }}>
         <ModelLeaderboard rows={models} />
       </div>

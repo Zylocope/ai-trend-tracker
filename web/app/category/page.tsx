@@ -43,8 +43,6 @@ function CategoryCardIcon({ slug }: { slug: string }) {
     <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
       <rect x="2" y="3" width="18" height="16" rx="2" stroke={s} strokeWidth="1.5"/>
       <path d="M2 8h18" stroke={s} strokeWidth="1.5"/>
-      <circle cx="5.5" cy="5.5" r="0.8" fill={s}/>
-      <circle cx="8.5" cy="5.5" r="0.8" fill={s}/>
       <path d="M8 12l-3 2.5L8 17M14 12l3 2.5L14 17" stroke={s} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   )
@@ -89,7 +87,6 @@ export default async function CategoriesPage() {
 
   return (
     <div>
-      {/* ── Hero ─────────────────────────────────────── */}
       <section className="text-center mb-14">
         <div
           className="badge-pulse inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 font-mono text-xs uppercase tracking-widest"
@@ -115,7 +112,7 @@ export default async function CategoriesPage() {
         </p>
       </section>
 
-      {/* ── Category cards grid ──────────────────────── */}
+      {/* Category cards - plain links, no event handlers */}
       <div
         className="fade-up"
         style={{
@@ -133,52 +130,41 @@ export default async function CategoriesPage() {
             <a
               key={cat.slug}
               href={`/categories/${cat.slug}`}
-              style={{ textDecoration: 'none' }}
-            >
-              <div style={{
+              className="rank-row"
+              style={{
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
                 padding: '16px 18px',
                 borderRadius: 10,
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-surface)',
-                cursor: 'pointer',
-                transition: 'border-color 0.2s, background 0.2s',
-                display: 'flex', alignItems: 'center', gap: 14,
               }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = `${color}55`
-                  ;(e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)'
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-subtle)'
-                  ;(e.currentTarget as HTMLElement).style.background = 'var(--bg-surface)'
-                }}
-              >
-                <div style={{
-                  width: 40, height: 40, borderRadius: 8, flexShrink: 0,
-                  background: `${color}18`, border: `1px solid ${color}33`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color,
-                }}>
-                  <CategoryCardIcon slug={cat.slug} />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)', marginBottom: 2 }}>
-                    {cat.name}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                    {count} tools
-                  </div>
-                </div>
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ marginLeft: 'auto', flexShrink: 0, color: 'var(--text-muted)' }}>
-                  <path d="M2 8L8 2M8 2H4M8 2v4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+            >
+              <div style={{
+                width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+                background: `${color}18`, border: `1px solid ${color}33`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color,
+              }}>
+                <CategoryCardIcon slug={cat.slug} />
               </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)', marginBottom: 2 }}>
+                  {cat.name}
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  {count} tools
+                </div>
+              </div>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ flexShrink: 0, color: 'var(--text-muted)' }}>
+                <path d="M2 8L8 2M8 2H4M8 2v4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </a>
           )
         })}
       </div>
 
-      {/* ── Divider ──────────────────────────────────── */}
+      {/* Divider */}
       <div className="flex items-center gap-4 mb-8">
         <div className="flex-1 border-t" style={{ borderColor: 'var(--border-subtle)' }} />
         <span className="font-mono text-xs uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
@@ -187,7 +173,7 @@ export default async function CategoriesPage() {
         <div className="flex-1 border-t" style={{ borderColor: 'var(--border-subtle)' }} />
       </div>
 
-      {/* ── Category tabs leaderboard ─────────────────── */}
+      {/* Category tabs */}
       <CategoryTabs categories={categories} allRows={allRows} />
     </div>
   )
