@@ -9,8 +9,6 @@ interface Combo {
   description:       string
   use_case:          string
   tool_slugs:        string[]
-  is_community_pick: boolean
-  community_votes:   number
 }
 
 interface Props { combos: Combo[] }
@@ -78,7 +76,7 @@ function CommunityPickBadge() {
       border: '1px solid rgba(232,162,48,0.3)',
     }}>
       <VoteIcon />
-      COMMUNITY PICK
+      EDITORIAL PICK
     </span>
   )
 }
@@ -86,8 +84,8 @@ function CommunityPickBadge() {
 export default function CombosTable({ combos }: Props) {
   const [view, setView] = useState<View>('ranked')
 
-  const ranked    = [...combos].sort((a, b) => b.community_votes - a.community_votes)
-  const community = combos.filter(c => c.is_community_pick)
+  const ranked    = combos
+  const community = combos
   const displayed = view === 'ranked' ? ranked : community
 
   return (
@@ -167,17 +165,10 @@ export default function CombosTable({ combos }: Props) {
                 </p>
               </div>
 
-              {/* Right: votes + community badge */}
+              {/* Right: provenance badge. These are hand-written recipes, so there
+                  is no vote count to show - inventing one would be the lie. */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
-                {combo.is_community_pick && <CommunityPickBadge />}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  fontFamily: 'var(--font-mono)', fontSize: '0.85rem',
-                  color: 'var(--accent-gold)',
-                }}>
-                  <VoteIcon />
-                  <span>{combo.community_votes}</span>
-                </div>
+                <CommunityPickBadge />
               </div>
             </div>
           </div>
@@ -192,8 +183,9 @@ export default function CombosTable({ combos }: Props) {
         fontFamily: 'var(--font-mono)', fontSize: '0.75rem',
         color: 'var(--text-muted)', lineHeight: 1.6,
       }}>
-        Combo rankings are based on community votes from HackerNews, Reddit, and curated picks.
-        These represent real workflows discussed by creators — not automated scoring.
+        These are hand-written workflow recipes, not a measurement. Nothing here is
+        ranked, scored, or voted on — the tools inside them are tracked individually
+        on their own category pages.
       </div>
     </div>
   )

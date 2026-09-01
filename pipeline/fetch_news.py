@@ -2,19 +2,21 @@
 import os
 import pandas as pd
 from datetime import date, timedelta
-from newsapi import NewsApiClient
 from tenacity import retry, stop_after_attempt, wait_exponential
 from loguru import logger
 
 LOOKBACK_DAYS = 7
 
 
-def _get_client() -> NewsApiClient:
+def _get_client():
+    # Imported lazily: NewsAPI is the one source that needs a key, and a missing
+    # package or key must cost this source only, not the whole run.
+    from newsapi import NewsApiClient
     return NewsApiClient(api_key=os.environ["NEWS_API_KEY"])
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=3, max=15))
-def _fetch_articles(client: NewsApiClient, keyword: str) -> list[dict]:
+def _fetch_articles(client, keyword: str) -> list[dict]:
     today     = date.today()
     from_date = (today - timedelta(days=LOOKBACK_DAYS)).isoformat()
     resp      = client.get_everything(

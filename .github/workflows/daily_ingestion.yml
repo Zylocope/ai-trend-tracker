@@ -1,19 +1,27 @@
-name: Daily Ingestion Pipeline
+name: Daily Snapshot
 
+# Commits data/snapshot.json once a day. The commit history IS the archive:
+# `git log data/snapshot.json` recovers what the site showed on any past day.
 on:
   schedule:
     - cron: "0 6 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-snapshot
+  cancel-in-progress: false
+
 jobs:
-  ingest:
+  snapshot:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
@@ -22,21 +30,25 @@ jobs:
       - name: Install dependencies
         run: pip install -r pipeline/requirements.txt
 
-      - name: Run ingestion
+      - name: Verify snapshot builder
+        run: python -m pipeline.test_store
+
+      - name: Build snapshot
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
         run: python -m pipeline.run_all
 
-      - name: Update model stats
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python -m pipeline.update_model_stats
-
-      - name: Run NLP sentiment scoring
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python -m pipeline.run_sentiment
+      - name: Commit snapshot
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/snapshot.json
+          if git diff --staged --quiet; then
+            echo "No change in today's snapshot - nothing to commit."
+          else
+            git commit -m "data: snapshot $(date -u +%Y-%m-%d)"
+            git push
+          fi
 
       - name: Upload logs
         if: always()
@@ -45,3 +57,4 @@ jobs:
           name: pipeline-logs-${{ github.run_number }}
           path: logs/
           retention-days: 7
+          if-no-files-found: ignore

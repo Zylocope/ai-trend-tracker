@@ -1,10 +1,12 @@
-import { supabase, MetricRow, ToolRow, MentionRow } from '@/lib/supabase'
+import { tools, getTool, getToolMetrics, getToolMentions } from '@/lib/data'
 import SentimentChart from '@/components/SentimentChart'
 import MentionsFeed from '@/components/MentionsFeed'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 
-export const revalidate = 300
+export function generateStaticParams() {
+  return tools.map(t => ({ tool: t.slug }))
+}
 
 const TOOL_COLORS: Record<string, string> = {
   chatgpt:       '#10a37f',
@@ -22,44 +24,6 @@ const TOOL_COLORS: Record<string, string> = {
   youcom:        '#ff6b35',
   andi:          '#7c5cbf',
   phind:         '#ff4d4d',
-}
-
-async function getToolData(slug: string): Promise<{ tool: ToolRow; metrics: MetricRow[] } | null> {
-  const { data: tool } = await supabase
-    .from('dim_tool')
-    .select('tool_id, tool_name, slug, company, release_date, category_slug:dim_category(slug)')
-    .eq('slug', slug)
-    .single()
-
-  if (!tool) return null
-
-  const { data: metrics } = await supabase
-    .from('fact_daily_metrics')
-    .select('date, google_trend_score, reddit_mention_count, news_mention_count, average_sentiment_score')
-    .eq('tool_id', (tool as any).tool_id)
-    .order('date', { ascending: true })
-    .limit(90)
-
-  return { tool: tool as any, metrics: (metrics ?? []) as MetricRow[] }
-}
-
-async function getRecentMentions(slug: string): Promise<MentionRow[]> {
-  const { data: tool } = await supabase
-    .from('dim_tool')
-    .select('tool_id')
-    .eq('slug', slug)
-    .single()
-
-  if (!tool) return []
-
-  const { data } = await supabase
-    .from('raw_mentions')
-    .select('id, fetched_at, source, title, body, url, sentiment')
-    .eq('tool_id', (tool as any).tool_id)
-    .order('fetched_at', { ascending: false })
-    .limit(40)
-
-  return (data ?? []) as MentionRow[]
 }
 
 // SVG icons for stats
@@ -91,13 +55,13 @@ function MentionsIcon() {
   )
 }
 
-export default async function ToolPage({ params }: { params: { tool: string } }) {
-  const result   = await getToolData(params.tool)
-  if (!result) notFound()
+export default function ToolPage({ params }: { params: { tool: string } }) {
+  const tool = getTool(params.tool)
+  if (!tool) notFound()
 
-  const { tool, metrics } = result
-  const mentions          = await getRecentMentions(params.tool)
-  const color             = TOOL_COLORS[params.tool] ?? '#888888'
+  const metrics  = getToolMetrics(params.tool, 90)
+  const mentions = getToolMentions(params.tool, 40)
+  const color    = TOOL_COLORS[params.tool] ?? '#888888'
 
   const latest    = metrics.at(-1)
   const prev      = metrics.at(-2)

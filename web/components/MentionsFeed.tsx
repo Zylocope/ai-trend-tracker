@@ -1,6 +1,6 @@
 'use client'
 
-import { MentionRow } from '@/lib/supabase'
+import { MentionRow } from '@/lib/data'
 import { useState } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 
@@ -111,13 +111,13 @@ export default function MentionsFeed({ mentions }: Props) {
           </div>
         )}
 
-        {visible.map(m => {
+        {visible.map((m, i) => {
           const isHN  = m.source === 'hackernews'
           const domain = m.url ? (() => { try { return new URL(m.url!).hostname } catch { return '' } })() : ''
 
           return (
             <a
-              key={m.id}
+              key={`${m.url ?? 'x'}-${i}`}
               href={m.url ?? '#'}
               target="_blank"
               rel="noopener noreferrer"
@@ -202,7 +202,7 @@ export default function MentionsFeed({ mentions }: Props) {
 
                 {/* Time */}
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {formatDistanceToNow(parseISO(m.fetched_at), { addSuffix: true })}
+                  {formatDistanceToNow(parseISO(m.date), { addSuffix: true })}
                 </span>
 
                 {/* Domain */}

@@ -1,20 +1,11 @@
-import { supabase, ModelLeaderboardRow } from '@/lib/supabase'
+import { getModelLeaderboard, getHypeGap, meta } from '@/lib/data'
 import ModelLeaderboard from '@/components/ModelLeaderboard'
+import HypeGap from '@/components/HypeGap'
 
-export const revalidate = 300
-
-async function getModelRows(): Promise<ModelLeaderboardRow[]> {
-  const { data, error } = await supabase
-    .from('v_model_leaderboard')
-    .select('*')
-    .order('company_name')
-  if (error) { console.error(error); return [] }
-  return data as ModelLeaderboardRow[]
-}
-
-export default async function HomePage() {
-  const models = await getModelRows()
-  const today  = new Date().toLocaleDateString('en-US', {
+export default function HomePage() {
+  const models = getModelLeaderboard()
+  const gap    = getHypeGap()
+  const today  = new Date(meta.generated_at).toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   })
 
@@ -26,22 +17,23 @@ export default async function HomePage() {
           style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
         >
           <span className="live-pulse" />
-          <span>Model Intelligence</span>
+          <span>Snapshot</span>
           <span style={{ color: 'var(--text-muted)' }}>—</span>
           <span>{today}</span>
         </div>
 
         <h1 className="hero-title mb-5 fade-up" style={{ animationDelay: '0.1s' }}>
-          Which AI model is{' '}
-          <span className="hero-highlight">worth your attention</span>?
+          Which models get more attention{' '}
+          <span className="hero-highlight">than they have earned</span>?
         </h1>
 
         <p
           className="fade-up mx-auto max-w-xl text-base leading-relaxed mb-8"
           style={{ color: 'var(--text-secondary)', animationDelay: '0.3s' }}
         >
-          Real specs alongside real buzz — speed, latency, context window and funding
-          combined with daily trend signals and HackerNews mentions.
+          Benchmarks measure capability. This measures attention — search interest and
+          Hacker News volume, collected daily — and sets it against Artificial Analysis
+          scores to show where the two disagree.
         </p>
 
         <div className="fade-up flex flex-wrap justify-center gap-3" style={{ animationDelay: '0.5s' }}>
@@ -68,6 +60,10 @@ export default async function HomePage() {
       </section>
 
       <div className="fade-up" style={{ animationDelay: '0.6s' }}>
+        <HypeGap overhyped={gap.overhyped} underrated={gap.underrated} />
+      </div>
+
+      <div className="fade-up" style={{ animationDelay: '0.7s' }}>
         <ModelLeaderboard rows={models} />
       </div>
     </div>

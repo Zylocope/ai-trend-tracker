@@ -1,5 +1,7 @@
+# torch is CPU-only here; the sentiment model is small and runs fine on GitHub's runners.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 newsapi-python==0.2.7
-psycopg2-binary==2.9.9
 pandas==2.2.2
 python-dotenv==1.0.1
 tenacity==8.3.0

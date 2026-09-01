@@ -1,6 +1,6 @@
 'use client'
 
-import { LeaderboardRow } from '@/lib/supabase'
+import { LeaderboardRow } from '@/lib/data'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 

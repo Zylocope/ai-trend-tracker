@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CategoryRow, LeaderboardRow } from '@/lib/supabase'
+import { CategoryRow, LeaderboardRow } from '@/lib/data'
 import LeaderboardTable from './LeaderboardTable'
 
 interface Props {

@@ -1,6 +1,6 @@
 'use client'
 
-import { ModelLeaderboardRow } from '@/lib/supabase'
+import { ModelLeaderboardRow } from '@/lib/data'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 
@@ -14,11 +14,10 @@ const COMPANY_COLORS: Record<string, string> = {
   xai:       '#ededed',
 }
 
-function fmt(n: number | null): string {
+function fmtPrice(n: number | null): string {
   if (n === null || n === undefined) return '—'
-  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`
-  if (n >= 1_000_000)     return `$${(n / 1_000_000).toFixed(0)}M`
-  return `$${n.toLocaleString()}`
+  if (n === 0) return 'free'
+  return n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(3)}`
 }
 
 function fmtCtx(n: number | null): string {
@@ -47,21 +46,20 @@ function useCounter(target: number | null, duration = 800) {
   return val
 }
 
-function SpeedIcon() {
+function BrainIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-      <path d="M1 8.5C1 5.46 3.46 3 6.5 3s5.5 2.46 5.5 5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M6.5 8.5L8.5 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <circle cx="6.5" cy="8.5" r="0.8" fill="currentColor"/>
+      <path d="M5.5 2C4 2 3 3 3 4.2c-.9.3-1.5 1-1.5 1.9 0 1.1.9 2 2 2 .3.7 1 1.2 2 1.2s1.7-.5 2-1.2c1.1 0 2-.9 2-2 0-.9-.6-1.6-1.5-1.9C8 3 7 2 5.5 2z"
+        stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round"/>
+      <path d="M5.5 2v7.3" stroke="currentColor" strokeWidth="1.1"/>
     </svg>
   )
 }
 
-function LatencyIcon() {
+function CodeIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-      <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M5.5 3v3l2 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M4 3L1.5 5.5 4 8M7 3l2.5 2.5L7 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   )
 }
@@ -75,7 +73,7 @@ function ContextIcon() {
   )
 }
 
-function FundingIcon() {
+function PriceIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
       <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeWidth="1.2"/>
@@ -93,21 +91,6 @@ function TrendUpIcon({ positive }: { positive: boolean }) {
         : <path d="M1 3L4 6l2-2 3 4M8 8h2v-2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
       }
     </svg>
-  )
-}
-
-function ProviderBadge({ name }: { name: string }) {
-  const colors: Record<string, string> = { AWS: '#ff9900', Azure: '#0089d6', GCP: '#4285f4' }
-  const color = colors[name] ?? 'var(--text-muted)'
-  return (
-    <span style={{
-      padding: '1px 6px', borderRadius: 3,
-      fontSize: '0.65rem', fontFamily: 'var(--font-mono)',
-      border: `1px solid ${color}44`, color,
-      background: `${color}11`, whiteSpace: 'nowrap',
-    }}>
-      {name}
-    </span>
   )
 }
 
@@ -134,7 +117,7 @@ function ModelRow({ row, rank, delay }: { row: ModelLeaderboardRow; rank: number
           {rank}
         </span>
 
-        {/* Left: model info + specs */}
+        {/* Left: model info + facts */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div className="tool-icon-wrap" style={{
@@ -159,7 +142,7 @@ function ModelRow({ row, rank, delay }: { row: ModelLeaderboardRow; rank: number
                 {row.company_name}
                 {row.is_open_source && (
                   <span style={{ marginLeft: 6, color: 'var(--accent-teal)', fontSize: '0.65rem' }}>
-                    OPEN SOURCE
+                    OPEN WEIGHTS
                   </span>
                 )}
               </div>
@@ -168,12 +151,12 @@ function ModelRow({ row, rank, delay }: { row: ModelLeaderboardRow; rank: number
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
             {[
-              { icon: <SpeedIcon />, color: 'var(--accent-gold)', val: row.speed_tps ? `${row.speed_tps.toFixed(0)} t/s` : '—' },
-              { icon: <LatencyIcon />, color: 'var(--accent-teal)', val: row.latency_ms ? `${row.latency_ms.toFixed(0)}ms` : '—' },
-              { icon: <ContextIcon />, color: '#8ba5b8', val: fmtCtx(row.context_window) },
-              { icon: <FundingIcon />, color: 'var(--accent-red)', val: fmt(row.total_funding_usd) },
+              { icon: <BrainIcon />,   color: 'var(--accent-gold)', val: row.aa_intelligence_index?.toFixed(1) ?? '—', label: 'AA intelligence index' },
+              { icon: <CodeIcon />,    color: 'var(--accent-teal)', val: row.aa_coding_index?.toFixed(1) ?? '—',       label: 'AA coding index' },
+              { icon: <ContextIcon />, color: '#8ba5b8',            val: fmtCtx(row.context_window),                   label: 'Context window' },
+              { icon: <PriceIcon />,   color: 'var(--accent-red)',  val: `${fmtPrice(row.price_out_per_mtok)}/M`,      label: 'Output price per million tokens' },
             ].map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div key={i} title={item.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ color: item.color }}>{item.icon}</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                   {item.val}
@@ -181,15 +164,9 @@ function ModelRow({ row, rank, delay }: { row: ModelLeaderboardRow; rank: number
               </div>
             ))}
           </div>
-
-          {row.providers && row.providers.length > 0 && (
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              {row.providers.map((p: string) => <ProviderBadge key={p} name={p} />)}
-            </div>
-          )}
         </div>
 
-        {/* Right: buzz signals */}
+        {/* Right: attention signals */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>TREND</span>
@@ -215,6 +192,11 @@ function ModelRow({ row, rank, delay }: { row: ModelLeaderboardRow; rank: number
               </span>
             </div>
           )}
+          {row.buzz_tool_slug === null && (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+              no attention series
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -222,25 +204,28 @@ function ModelRow({ row, rank, delay }: { row: ModelLeaderboardRow; rank: number
 }
 
 export default function ModelLeaderboard({ rows }: { rows: ModelLeaderboardRow[] }) {
-  const [sortBy, setSortBy] = useState<'speed' | 'latency' | 'context' | 'funding' | 'trend'>('trend')
+  const [sortBy, setSortBy] = useState<'intelligence' | 'coding' | 'agentic' | 'context' | 'price' | 'trend'>('intelligence')
 
   const sorted = [...rows].sort((a, b) => {
     switch (sortBy) {
-      case 'speed':   return (b.speed_tps ?? 0)         - (a.speed_tps ?? 0)
-      case 'latency': return (a.latency_ms ?? 9999)      - (b.latency_ms ?? 9999)
-      case 'context': return (b.context_window ?? 0)     - (a.context_window ?? 0)
-      case 'funding': return (b.total_funding_usd ?? 0)  - (a.total_funding_usd ?? 0)
-      case 'trend':   return (b.google_trend_score ?? 0) - (a.google_trend_score ?? 0)
-      default:        return 0
+      case 'intelligence': return (b.aa_intelligence_index ?? -1) - (a.aa_intelligence_index ?? -1)
+      case 'coding':       return (b.aa_coding_index ?? -1)       - (a.aa_coding_index ?? -1)
+      case 'agentic':      return (b.aa_agentic_index ?? -1)      - (a.aa_agentic_index ?? -1)
+      case 'context':      return (b.context_window ?? 0)         - (a.context_window ?? 0)
+      // Unpriced models sort last rather than masquerading as free.
+      case 'price':        return (a.price_out_per_mtok ?? Infinity) - (b.price_out_per_mtok ?? Infinity)
+      case 'trend':        return (b.google_trend_score ?? -1)    - (a.google_trend_score ?? -1)
+      default:             return 0
     }
   })
 
   const SORTS = [
-    { key: 'trend'   as const, label: 'By Trend' },
-    { key: 'speed'   as const, label: 'By Speed' },
-    { key: 'latency' as const, label: 'By Latency' },
-    { key: 'context' as const, label: 'By Context' },
-    { key: 'funding' as const, label: 'By Funding' },
+    { key: 'intelligence' as const, label: 'Intelligence' },
+    { key: 'coding'       as const, label: 'Coding' },
+    { key: 'agentic'      as const, label: 'Agentic' },
+    { key: 'trend'        as const, label: 'Attention' },
+    { key: 'context'      as const, label: 'Context' },
+    { key: 'price'        as const, label: 'Cheapest' },
   ]
 
   return (
@@ -274,13 +259,13 @@ export default function ModelLeaderboard({ rows }: { rows: ModelLeaderboardRow[]
           textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)',
         }}>
           <span style={{ textAlign: 'right' }}>#</span>
-          <span>Model · Specs</span>
+          <span>Model · Capability · Price</span>
           <span style={{ textAlign: 'right' }}>Trend · HN · Sentiment</span>
         </div>
 
         {sorted.length === 0 ? (
           <div style={{ padding: '4rem', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            No model data yet — run the SQL migration first.
+            No model data in this snapshot — run <code>python -m pipeline.run_all</code>.
           </div>
         ) : (
           sorted.map((row, i) => (
@@ -288,6 +273,19 @@ export default function ModelLeaderboard({ rows }: { rows: ModelLeaderboardRow[]
           ))
         )}
       </div>
+
+      <p style={{
+        marginTop: 12, fontFamily: 'var(--font-mono)', fontSize: '0.68rem',
+        color: 'var(--text-muted)', lineHeight: 1.6,
+      }}>
+        Capability indices from{' '}
+        <a href="https://artificialanalysis.ai/" target="_blank" rel="noopener noreferrer"
+           style={{ color: 'var(--accent-teal)' }}>Artificial Analysis</a>
+        , pricing and context from{' '}
+        <a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer"
+           style={{ color: 'var(--accent-teal)' }}>OpenRouter</a>
+        . Trend and HN columns are measured by this project.
+      </p>
     </div>
   )
 }

@@ -1,7 +1,5 @@
-import { supabase, CategoryRow, LeaderboardRow } from '@/lib/supabase'
+import { categories as allCategories, getCategoryLeaderboard, tools } from '@/lib/data'
 import CategoryTabs from '@/components/CategoryTabs'
-
-export const revalidate = 300
 
 const CATEGORY_COLORS: Record<string, string> = {
   'general-chat':     '#e8a230',
@@ -13,11 +11,12 @@ const CATEGORY_COLORS: Record<string, string> = {
   'short-film-combos':'#ef476f',
 }
 
-const TOOL_COUNTS: Record<string, number> = {
-  'general-chat': 5, 'coding': 5, 'web-search': 4,
-  'vibe-coding': 9, 'image-generation': 8,
-  'video-generation': 7, 'short-film-combos': 6,
-}
+// Counted from the tracked-tool list rather than hardcoded, so the badge cannot
+// drift away from what the pipeline actually collects.
+const TOOL_COUNTS: Record<string, number> = tools.reduce((acc, t) => {
+  acc[t.category_slug] = (acc[t.category_slug] ?? 0) + 1
+  return acc
+}, {} as Record<string, number>)
 
 function CategoryCardIcon({ slug }: { slug: string }) {
   const s = 'currentColor'
@@ -68,21 +67,9 @@ function CategoryCardIcon({ slug }: { slug: string }) {
   return null
 }
 
-async function getCategories(): Promise<CategoryRow[]> {
-  const { data } = await supabase.from('dim_category').select('*').order('category_id')
-  return (data ?? []) as CategoryRow[]
-}
-
-async function getAllRows(): Promise<LeaderboardRow[]> {
-  const { data } = await supabase
-    .from('v_category_leaderboard')
-    .select('*')
-    .order('composite_score', { ascending: false })
-  return (data ?? []) as LeaderboardRow[]
-}
-
-export default async function CategoriesPage() {
-  const [categories, allRows] = await Promise.all([getCategories(), getAllRows()])
+export default function CategoriesPage() {
+  const categories = allCategories
+  const allRows    = getCategoryLeaderboard()
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
   return (

@@ -1,6 +1,6 @@
 'use client'
 
-import { MetricRow } from '@/lib/supabase'
+import { MetricRow } from '@/lib/data'
 import {
   ComposedChart, Line, Bar, Area, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,

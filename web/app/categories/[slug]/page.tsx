@@ -1,15 +1,12 @@
-import { supabase, LeaderboardRow } from '@/lib/supabase'
+import { categories, getCategory, getCategoryLeaderboard, getCombos, meta } from '@/lib/data'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import VibeCodingTable from '@/components/VibeCodingTable'
 import CombosTable from '@/components/CombosTable'
 import LeaderboardTable from '@/components/LeaderboardTable'
 
-export const revalidate = 300
-
-export async function generateStaticParams() {
-  const { data } = await supabase.from('dim_category').select('slug')
-  return (data ?? []).map(c => ({ slug: c.slug }))
+export function generateStaticParams() {
+  return categories.map(c => ({ slug: c.slug }))
 }
 
 const WEIGHT_LABELS: Record<string, { label: string; pct: string; color: string }[]> = {
@@ -93,69 +90,52 @@ function CategorySVGIcon({ slug }: { slug: string }) {
   return null
 }
 
-export default async function CategoryDetailPage({ params }: { params: { slug: string } }) {
-  const { data: category } = await supabase
-    .from('dim_category')
-    .select('*')
-    .eq('slug', params.slug)
-    .single()
-
+export default function CategoryDetailPage({ params }: { params: { slug: string } }) {
+  const category = getCategory(params.slug)
   if (!category) notFound()
 
-  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const today = new Date(meta.generated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   const weights = WEIGHT_LABELS[params.slug] ?? WEIGHT_LABELS['general-chat']
 
   // For combos page, load combo data
   if (params.slug === 'short-film-combos') {
-    const { data: combos } = await supabase
-      .from('dim_combo')
-      .select('*')
-      .order('community_votes', { ascending: false })
+    const combos = getCombos()
 
     return (
       <div>
         <BackLink />
         <CategoryHero category={category} today={today} weights={weights} slug={params.slug} />
-        <CombosTable combos={combos ?? []} />
+        <CombosTable combos={combos} />
       </div>
     )
   }
 
   // For vibe-coding, pass pricing tier filter to client component
   if (params.slug === 'vibe-coding') {
-    const { data: rows } = await supabase
-      .from('v_category_leaderboard')
-      .select('*')
-      .eq('category_slug', params.slug)
-      .order('composite_score', { ascending: false })
+    const rows = getCategoryLeaderboard(params.slug)
 
     return (
       <div>
         <BackLink />
         <CategoryHero category={category} today={today} weights={weights} slug={params.slug} />
-        <VibeCodingTable rows={(rows ?? []) as LeaderboardRow[]} />
+        <VibeCodingTable rows={rows} />
       </div>
     )
   }
 
   // Standard category page
-  const { data: rows } = await supabase
-    .from('v_category_leaderboard')
-    .select('*')
-    .eq('category_slug', params.slug)
-    .order('composite_score', { ascending: false })
-    .limit(20)
+  const rows = getCategoryLeaderboard(params.slug).slice(0, 20)
 
   return (
     <div>
       <BackLink />
       <CategoryHero category={category} today={today} weights={weights} slug={params.slug} />
-      {(rows ?? []).length === 0 ? (
+      {rows.length === 0 ? (
         <div className="table-wrap p-16 text-center font-mono text-sm" style={{ color: 'var(--text-muted)' }}>
-          No data yet — run the ingestion pipeline first.
+          No data in this snapshot yet — run the ingestion pipeline.
         </div>
       ) : (
-        <LeaderboardTable rows={(rows ?? []) as LeaderboardRow[]} />
+        <LeaderboardTable rows={rows} />
       )}
     </div>
   )

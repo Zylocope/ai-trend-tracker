@@ -1,33 +1,14 @@
-import { supabase, CompanyRow, ModelRow } from '@/lib/supabase'
+import { companies, getCompany, getCompanyModels } from '@/lib/data'
 import { notFound } from 'next/navigation'
-import { format } from 'date-fns'
 
-export const revalidate = 300
-
-export async function generateStaticParams() {
-  const { data } = await supabase.from('dim_company').select('slug')
-  return (data ?? []).map(c => ({ slug: c.slug }))
+export function generateStaticParams() {
+  return companies.map(c => ({ slug: c.slug }))
 }
 
-async function getData(slug: string): Promise<{ company: CompanyRow; models: ModelRow[] } | null> {
-  const { data: company } = await supabase
-    .from('dim_company').select('*').eq('slug', slug).single()
-  if (!company) return null
-
-  const { data: models } = await supabase
-    .from('dim_model')
-    .select('*')
-    .eq('company_id', company.company_id)
-    .order('release_date', { ascending: false })
-
-  return { company: company as CompanyRow, models: (models ?? []) as ModelRow[] }
-}
-
-function fmt(n: number | null): string {
-  if (!n) return '—'
-  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`
-  if (n >= 1_000_000)     return `$${(n / 1_000_000).toFixed(0)}M`
-  return `$${n.toLocaleString()}`
+function fmtPrice(n: number | null): string {
+  if (n === null || n === undefined) return '—'
+  if (n === 0) return 'free'
+  return n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(3)}`
 }
 
 function fmtCtx(n: number | null): string {
@@ -42,11 +23,11 @@ const COMPANY_COLORS: Record<string, string> = {
   meta: '#0668e1', mistral: '#ff6900', deepseek: '#4d9fff', xai: '#ededed',
 }
 
-export default async function CompanyPage({ params }: { params: { slug: string } }) {
-  const result = await getData(params.slug)
-  if (!result) notFound()
+export default function CompanyPage({ params }: { params: { slug: string } }) {
+  const company = getCompany(params.slug)
+  if (!company) notFound()
 
-  const { company, models } = result
+  const models   = getCompanyModels(params.slug)
   const color    = COMPANY_COLORS[params.slug] ?? '#888'
   const initials = company.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
@@ -116,14 +97,6 @@ export default async function CompanyPage({ params }: { params: { slug: string }
             )}
             <div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
-                Total Funding
-              </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--accent-gold)' }}>
-                {fmt(company.total_funding_usd)}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
                 Models
               </div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
@@ -152,10 +125,10 @@ export default async function CompanyPage({ params }: { params: { slug: string }
           color: 'var(--text-muted)',
         }}>
           <span>Model</span>
-          <span style={{ textAlign: 'right' }}>Speed</span>
-          <span style={{ textAlign: 'right' }}>Latency</span>
+          <span style={{ textAlign: 'right' }}>Intelligence</span>
+          <span style={{ textAlign: 'right' }}>Coding</span>
           <span style={{ textAlign: 'right' }}>Context</span>
-          <span>Providers</span>
+          <span style={{ textAlign: 'right' }}>Out / Mtok</span>
         </div>
 
         {models.map((m, i) => (
@@ -168,38 +141,25 @@ export default async function CompanyPage({ params }: { params: { slug: string }
             }}>
               <div>
                 <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
-                  {m.name}
+                  {m.model_name}
                 </div>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {m.release_date ? format(new Date(m.release_date), 'MMM yyyy') : ''}
                   {m.is_open_source && (
-                    <span style={{ marginLeft: 8, color: 'var(--accent-teal)' }}>OPEN SOURCE</span>
+                    <span style={{ color: 'var(--accent-teal)' }}>OPEN WEIGHTS</span>
                   )}
                 </div>
               </div>
               <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-gold)' }}>
-                {m.speed_tps ? `${m.speed_tps.toFixed(0)} t/s` : '—'}
+                {m.aa_intelligence_index?.toFixed(1) ?? '—'}
               </div>
               <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-teal)' }}>
-                {m.latency_ms ? `${m.latency_ms.toFixed(0)}ms` : '—'}
+                {m.aa_coding_index?.toFixed(1) ?? '—'}
               </div>
               <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                 {fmtCtx(m.context_window)}
               </div>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {(m.providers ?? []).map(p => {
-                  const colors: Record<string, string> = { AWS: '#ff9900', Azure: '#0089d6', GCP: '#4285f4' }
-                  const c = colors[p] ?? 'var(--text-muted)'
-                  return (
-                    <span key={p} style={{
-                      padding: '1px 6px', borderRadius: 3,
-                      fontSize: '0.65rem', fontFamily: 'var(--font-mono)',
-                      border: `1px solid ${c}44`, color: c, background: `${c}11`,
-                    }}>
-                      {p}
-                    </span>
-                  )
-                })}
+              <div style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                {fmtPrice(m.price_out_per_mtok)}
               </div>
             </div>
           </div>
